@@ -56,7 +56,6 @@ const uploadFile = ref<File | null>(null)
 const uploadForm = reactive({
   file_type: 'PI',
   version: 'v1',
-  visibility: 'customer' as 'customer' | 'internal',
 })
 
 const logisticsForm = reactive({
@@ -229,7 +228,6 @@ async function submitUploadFile() {
     file: uploadFile.value,
     file_type: uploadForm.file_type,
     version: uploadForm.version,
-    visibility: uploadForm.visibility,
   })
   showUploadDialog.value = false
   uploadFile.value = null
@@ -336,7 +334,6 @@ const repliesByParent = computed(() => {
 })
 
 const formatDate = (d: string | null) => (d ? new Date(d).toLocaleString() : '-')
-const fileVisibilityLabel = (v: string) => (v === 'customer' ? t('orderDetail.visibility.customer') : t('orderDetail.visibility.internal'))
 </script>
 
 <template>
@@ -377,15 +374,17 @@ const fileVisibilityLabel = (v: string) => (v === 'customer' ? t('orderDetail.vi
         <section class="detail-grid">
           <article class="dashboard-card detail-card">
             <div class="card-head"><h2>{{ t('orderDetail.sections.basic') }}</h2></div>
-            <div class="kv-grid"><div v-for="row in basicInfo" :key="row.key" class="kv-row"><span>{{ row.key }}</span><strong>{{ row.value }}</strong></div></div>
-            <div class="status-editor">
-              <label class="field">
+            <div class="kv-grid">
+              <div v-for="row in basicInfo" :key="row.key" class="kv-row"><span>{{ row.key }}</span><strong>{{ row.value }}</strong></div>
+              <div class="kv-row kv-row-select">
                 <span>{{ t('orderDetail.basic.status') }}</span>
-                <select v-model="statusDraft" class="customer-select">
-                  <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
-                </select>
-              </label>
-              <button class="primary-button" :disabled="savingStatus" @click="saveStatus">{{ t('order.actions.save') }}</button>
+                <div class="kv-row-action">
+                  <select v-model="statusDraft" class="customer-select">
+                    <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
+                  </select>
+                  <button class="primary-button" :disabled="savingStatus" @click="saveStatus">{{ t('order.actions.save') }}</button>
+                </div>
+              </div>
             </div>
           </article>
 
@@ -412,17 +411,16 @@ const fileVisibilityLabel = (v: string) => (v === 'customer' ? t('orderDetail.vi
             </table>
           </article>
 
-          <article class="dashboard-card detail-card detail-span-2 compact-card">
+          <article class="dashboard-card detail-card compact-card">
             <div class="card-head"><h2>{{ t('orderDetail.sections.files') }}</h2><button class="primary-button" @click="showUploadDialog = true">上传文件</button></div>
             <table class="customer-table">
-              <thead><tr><th>File</th><th>Type</th><th>Version</th><th>Size</th><th>Visibility</th><th>{{ t('order.columns.actions') }}</th></tr></thead>
+              <thead><tr><th>File</th><th>Type</th><th>Version</th><th>Size</th><th>{{ t('order.columns.actions') }}</th></tr></thead>
               <tbody>
                 <tr v-for="f in files" :key="f.id">
                   <td class="mono"><a v-if="f.file_url" :href="f.file_url" target="_blank">{{ f.file_name }}</a><span v-else>{{ f.file_name }}</span></td>
                   <td>{{ f.file_type }}</td>
                   <td>{{ f.version }}</td>
                   <td>{{ f.size }}</td>
-                  <td>{{ fileVisibilityLabel(f.visibility) }}</td>
                   <td><button class="text-button" @click="removeFile(f)">{{ t('order.actions.delete') }}</button></td>
                 </tr>
               </tbody>
@@ -452,7 +450,7 @@ const fileVisibilityLabel = (v: string) => (v === 'customer' ? t('orderDetail.vi
             </table>
           </article>
 
-          <article class="dashboard-card detail-card detail-span-2 compact-card">
+          <article class="dashboard-card detail-card detail-span-full compact-card">
             <div class="card-head"><h2>{{ t('orderDetail.sections.messages') }}</h2><button class="primary-button" @click="createThread">新建会话</button></div>
             <div class="message-layout-local">
               <aside class="message-thread-list">
@@ -463,13 +461,13 @@ const fileVisibilityLabel = (v: string) => (v === 'customer' ? t('orderDetail.vi
               </aside>
               <section class="message-thread-view">
                 <div class="thread-messages local-thread">
-                  <article v-for="m in rootMessages" :key="m.id" class="chat-bubble" :class="m.sender_role === 'admin' ? 'admin' : 'customer'">
+                  <article v-for="m in rootMessages" :key="m.id" class="chat-bubble message-record" :class="m.sender_role === 'admin' ? 'admin' : 'customer'">
                     <strong>{{ m.sender_role === 'admin' ? 'Admin' : 'Customer' }}</strong>
                     <p>{{ m.content }}</p>
                     <span>{{ formatDate(m.created_at) }}</span>
 
                     <div v-if="repliesByParent[m.id]?.length" class="reply-list">
-                      <article v-for="r in repliesByParent[m.id]" :key="r.id" class="chat-bubble reply" :class="r.sender_role === 'admin' ? 'admin' : 'customer'">
+                      <article v-for="r in repliesByParent[m.id]" :key="r.id" class="chat-bubble reply message-record" :class="r.sender_role === 'admin' ? 'admin' : 'customer'">
                         <strong>{{ r.sender_role === 'admin' ? 'Admin' : 'Customer' }}</strong>
                         <p>{{ r.content }}</p>
                         <span>{{ formatDate(r.created_at) }}</span>
@@ -507,7 +505,6 @@ const fileVisibilityLabel = (v: string) => (v === 'customer' ? t('orderDetail.vi
             <label class="field"><span>文件</span><input type="file" @change="pickUploadFile" /></label>
             <label class="field"><span>文件类型</span><input v-model="uploadForm.file_type" type="text" placeholder="PI/CI/PL/BL..." /></label>
             <label class="field"><span>版本</span><input v-model="uploadForm.version" type="text" placeholder="v1" /></label>
-            <label class="field"><span>可见性</span><select v-model="uploadForm.visibility" class="customer-select"><option value="customer">customer</option><option value="internal">internal</option></select></label>
           </div>
           <div class="header-actions modal-actions"><button class="secondary-button" @click="showUploadDialog = false">取消</button><button class="primary-button" @click="submitUploadFile">上传</button></div>
         </section>

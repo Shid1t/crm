@@ -1551,11 +1551,18 @@ select:focus-visible {
   grid-column: span 2;
 }
 
-.status-editor {
-  margin-top: 14px;
-  display: flex;
-  gap: 10px;
-  align-items: end;
+.kv-row-select {
+  align-items: center;
+}
+
+.kv-row-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.kv-row-action .customer-select {
+  min-width: 180px;
 }
 
 .compact-card {
@@ -1566,7 +1573,7 @@ select:focus-visible {
 
 .message-layout-local {
   display: grid;
-  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-columns: 200px minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -1590,6 +1597,25 @@ select:focus-visible {
 
 .local-thread {
   min-height: 240px;
+}
+
+.detail-span-full {
+  grid-column: 1 / -1;
+}
+
+.local-thread .chat-bubble {
+  max-width: 100%;
+  justify-self: stretch;
+  border-radius: 8px;
+}
+
+.message-record {
+  border-left-width: 4px;
+}
+
+.local-thread .chat-bubble.admin {
+  border-color: rgba(255, 202, 69, 0.42);
+  background: linear-gradient(135deg, rgba(255, 202, 69, 0.2), rgba(255, 202, 69, 0.08));
 }
 
 .chat-bubble.customer {
