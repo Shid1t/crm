@@ -77,6 +77,8 @@ export interface LogisticsDTO {
 export interface MessageThreadDTO {
   id: number
   title: string
+  description: string
+  status: 'open' | 'resolved'
   customer_name?: string
   order_no?: string
   order: number | null
@@ -178,14 +180,13 @@ export function uploadOrderFile(payload: {
   file: File
   file_type: string
   version?: string
-  visibility?: FileDTO['visibility']
 }) {
   const form = new FormData()
   form.append('order', String(payload.order))
   form.append('file', payload.file)
   form.append('file_type', payload.file_type)
   form.append('version', payload.version || 'v1')
-  form.append('visibility', payload.visibility || 'customer')
+  form.append('visibility', 'customer')
   return apiMultipartPost<FileDTO>('/files/', form)
 }
 
@@ -239,8 +240,12 @@ export function fetchMessageThreads(params?: { order_no?: string }) {
   return apiGet<MessageThreadDTO[]>(`/messages/${query}`)
 }
 
-export function createMessageThread(payload: { customer: number; order: number; title: string }) {
+export function createMessageThread(payload: { customer: number; order: number; title: string; description?: string; status?: 'open' | 'resolved' }) {
   return apiPost<MessageThreadDTO>('/messages/', payload)
+}
+
+export function updateMessageThread(id: number, payload: Partial<{ title: string; description: string; status: 'open' | 'resolved' }>) {
+  return apiPut<MessageThreadDTO>(`/messages/${id}/`, payload)
 }
 
 export function fetchMessageRecords(threadId: number) {

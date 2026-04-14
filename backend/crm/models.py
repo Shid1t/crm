@@ -118,9 +118,16 @@ class LogisticsRecord(TimeStampedModel):
 
 
 class MessageThread(TimeStampedModel):
+    STATUS_CHOICES = (
+        ("open", "Open"),
+        ("resolved", "Resolved"),
+    )
+
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name="message_threads")
     order = models.ForeignKey(Order, on_delete=models.SET_NULL, null=True, blank=True, related_name="message_threads")
     title = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="open")
 
 
 class MessageRecord(TimeStampedModel):

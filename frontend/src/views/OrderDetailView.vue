@@ -31,25 +31,28 @@ const route = useRoute()
 const { t } = useI18n()
 
 const orderNo = computed(() => String(route.params.orderNo || ''))
+
 const order = ref<OrderDTO | null>(null)
 const items = ref<OrderItemDTO[]>([])
 const files = ref<FileDTO[]>([])
 const logistics = ref<LogisticsDTO[]>([])
 const threads = ref<MessageThreadDTO[]>([])
 const messages = ref<MessageRecordDTO[]>([])
+
 const activeThreadId = ref<number | null>(null)
 const loading = ref(true)
-const savingStatus = ref(false)
 const error = ref('')
+const savingStatus = ref(false)
 
 const statusDraft = ref<OrderStatus>('pending')
-const replyDraftMap = reactive<Record<number, string>>({})
-const replyOpenMap = reactive<Record<number, boolean>>({})
 const newMessage = ref('')
+const quotedMessageId = ref<number | null>(null)
 
 const showUploadDialog = ref(false)
 const showLogisticsDialog = ref(false)
 const showItemDialog = ref(false)
+const showThreadDialog = ref(false)
+
 const editingItemId = ref<number | null>(null)
 
 const uploadFile = ref<File | null>(null)
@@ -76,6 +79,12 @@ const itemForm = reactive({
   unit_price: '0',
 })
 
+const threadForm = reactive({
+  title: '',
+  description: '',
+  status: 'open' as 'open' | 'resolved',
+})
+
 const statusOptions = computed(() => [
   { value: 'pending', label: t('order.status.pending') },
   { value: 'pending_payment', label: t('order.status.pending_payment') },
@@ -96,6 +105,11 @@ const menuItems = computed(() => [
   { key: 'settings', label: t('dashboard.menus.settings'), to: '/admin/settings' },
 ])
 
+const breadcrumbs = computed(() => [
+  { label: t('dashboard.menus.orders'), to: '/admin/orders' },
+  { label: orderNo.value, to: '' },
+])
+
 const basicInfo = computed(() => {
   if (!order.value) return []
   return [
@@ -107,6 +121,24 @@ const basicInfo = computed(() => {
     { key: t('orderDetail.basic.eta'), value: order.value.eta || '-' },
   ]
 })
+
+const rootMessages = computed(() => messages.value.filter((m) => !m.parent))
+const repliesByParent = computed(() => {
+  const map: Record<number, MessageRecordDTO[]> = {}
+  for (const msg of messages.value) {
+    if (!msg.parent) continue
+    if (!map[msg.parent]) map[msg.parent] = []
+    map[msg.parent].push(msg)
+  }
+  return map
+})
+
+const quotedMessage = computed(() => {
+  if (!quotedMessageId.value) return null
+  return messages.value.find((m) => m.id === quotedMessageId.value) || null
+})
+
+const activeThread = computed(() => threads.value.find((x) => x.id === activeThreadId.value) || null)
 
 async function loadOrderBundle() {
   loading.value = true
@@ -145,9 +177,13 @@ async function loadOrderBundle() {
 async function loadMessages(threadId: number | null) {
   if (!threadId) {
     messages.value = []
+    quotedMessageId.value = null
     return
   }
   messages.value = await fetchMessageRecords(threadId)
+  if (quotedMessageId.value && !messages.value.some((m) => m.id === quotedMessageId.value)) {
+    quotedMessageId.value = null
+  }
 }
 
 onMounted(loadOrderBundle)
@@ -158,8 +194,8 @@ async function saveStatus() {
   if (!order.value) return
   savingStatus.value = true
   try {
-    await updateOrder(order.value.id, { status: statusDraft.value })
-    await loadOrderBundle()
+    const updated = await updateOrder(order.value.id, { status: statusDraft.value })
+    order.value = updated
   } finally {
     savingStatus.value = false
   }
@@ -295,43 +331,43 @@ async function removeLogistics(item: LogisticsDTO) {
   await loadOrderBundle()
 }
 
+function openThreadDialog() {
+  threadForm.title = ''
+  threadForm.description = ''
+  threadForm.status = 'open'
+  showThreadDialog.value = true
+}
+
 async function createThread() {
-  if (!order.value) return
-  const title = window.prompt('请输入会话主题', `${order.value.order_no} 订单沟通`) || ''
-  if (!title.trim()) return
-  const created = await createMessageThread({ customer: order.value.customer, order: order.value.id, title })
+  if (!order.value || !threadForm.title.trim()) return
+  const created = await createMessageThread({
+    customer: order.value.customer,
+    order: order.value.id,
+    title: threadForm.title,
+    description: threadForm.description,
+    status: threadForm.status,
+  })
+  showThreadDialog.value = false
   activeThreadId.value = created.id
   await loadOrderBundle()
 }
 
-async function sendMessage(parentId?: number) {
-  const content = (parentId ? replyDraftMap[parentId] || '' : newMessage.value).trim()
+function quoteMessage(messageId: number) {
+  quotedMessageId.value = messageId
+}
+
+function clearQuote() {
+  quotedMessageId.value = null
+}
+
+async function sendMessage() {
+  const content = newMessage.value.trim()
   if (!content || !activeThreadId.value) return
-  await createMessageRecord(activeThreadId.value, content, parentId)
-  if (parentId) {
-    replyDraftMap[parentId] = ''
-    replyOpenMap[parentId] = false
-  } else {
-    newMessage.value = ''
-  }
+  await createMessageRecord(activeThreadId.value, content, quotedMessageId.value || undefined)
+  newMessage.value = ''
+  quotedMessageId.value = null
   await loadMessages(activeThreadId.value)
 }
-
-function toggleReply(messageId: number) {
-  replyOpenMap[messageId] = !replyOpenMap[messageId]
-  if (!replyDraftMap[messageId]) replyDraftMap[messageId] = ''
-}
-
-const rootMessages = computed(() => messages.value.filter((m) => !m.parent))
-const repliesByParent = computed(() => {
-  const map: Record<number, MessageRecordDTO[]> = {}
-  for (const msg of messages.value) {
-    if (!msg.parent) continue
-    if (!map[msg.parent]) map[msg.parent] = []
-    map[msg.parent].push(msg)
-  }
-  return map
-})
 
 const formatDate = (d: string | null) => (d ? new Date(d).toLocaleString() : '-')
 </script>
@@ -356,6 +392,14 @@ const formatDate = (d: string | null) => (d ? new Date(d).toLocaleString() : '-'
     </aside>
 
     <section class="dashboard-main">
+      <div class="breadcrumb-row">
+        <template v-for="(bc, idx) in breadcrumbs" :key="bc.label">
+          <RouterLink v-if="bc.to" class="breadcrumb-link" :to="bc.to">{{ bc.label }}</RouterLink>
+          <span v-else class="breadcrumb-current">{{ bc.label }}</span>
+          <span v-if="idx < breadcrumbs.length - 1" class="breadcrumb-sep">/</span>
+        </template>
+      </div>
+
       <header class="dashboard-header">
         <div>
           <p class="panel-kicker">{{ t('orderDetail.kicker') }}</p>
@@ -379,10 +423,10 @@ const formatDate = (d: string | null) => (d ? new Date(d).toLocaleString() : '-'
               <div class="kv-row kv-row-select">
                 <span>{{ t('orderDetail.basic.status') }}</span>
                 <div class="kv-row-action">
-                  <select v-model="statusDraft" class="customer-select">
+                  <select v-model="statusDraft" class="customer-select" :disabled="savingStatus" @change="saveStatus">
                     <option v-for="s in statusOptions" :key="s.value" :value="s.value">{{ s.label }}</option>
                   </select>
-                  <button class="primary-button" :disabled="savingStatus" @click="saveStatus">{{ t('order.actions.save') }}</button>
+                  <span class="status-saving" v-if="savingStatus">...</span>
                 </div>
               </div>
             </div>
@@ -429,71 +473,82 @@ const formatDate = (d: string | null) => (d ? new Date(d).toLocaleString() : '-'
 
           <article class="dashboard-card detail-card detail-span-2 compact-card">
             <div class="card-head"><h2>{{ t('orderDetail.sections.logistics') }}</h2><button class="primary-button" @click="openNewLogistics">新增物流</button></div>
-            <table class="customer-table">
-              <thead><tr><th>Company</th><th>Tracking No.</th><th>ETD</th><th>ETA</th><th>Status</th><th>Latest Note</th><th>{{ t('order.columns.actions') }}</th></tr></thead>
-              <tbody>
-                <tr v-for="l in logistics" :key="l.id">
-                  <td>{{ l.company }}</td>
-                  <td class="mono">{{ l.tracking_no }}</td>
-                  <td>{{ l.etd || '-' }}</td>
-                  <td>{{ l.eta || '-' }}</td>
-                  <td>{{ l.status }}</td>
-                  <td>{{ l.latest_note }}</td>
-                  <td>
-                    <div class="table-actions">
-                      <button class="text-button" @click="openEditLogistics(l)">{{ t('order.actions.edit') }}</button>
-                      <button class="text-button" @click="removeLogistics(l)">{{ t('order.actions.delete') }}</button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+            <div class="stack-list logistics-row-list">
+              <article v-for="l in logistics" :key="l.id" class="logistics-row-card">
+                <div class="logistics-main">
+                  <strong>{{ l.company }}</strong>
+                  <p class="mono">{{ l.tracking_no }}</p>
+                  <span class="status-tag" :class="`ship-${l.status}`">{{ l.status }}</span>
+                </div>
+                <div class="logistics-date-block">
+                  <span>ETD: {{ l.etd || '-' }}</span>
+                  <span>ETA: {{ l.eta || '-' }}</span>
+                </div>
+                <div class="logistics-note-block">
+                  <p>{{ l.latest_note || '-' }}</p>
+                </div>
+                <div class="table-actions logistics-actions">
+                  <button class="text-button" @click="openEditLogistics(l)">{{ t('order.actions.edit') }}</button>
+                  <button class="text-button" @click="removeLogistics(l)">{{ t('order.actions.delete') }}</button>
+                </div>
+              </article>
+              <p v-if="!logistics.length" class="empty-line">{{ t('common.noData') }}</p>
+            </div>
           </article>
 
           <article class="dashboard-card detail-card detail-span-full compact-card">
-            <div class="card-head"><h2>{{ t('orderDetail.sections.messages') }}</h2><button class="primary-button" @click="createThread">新建会话</button></div>
+            <div class="card-head"><h2>{{ t('orderDetail.sections.messages') }}</h2><button class="primary-button" @click="openThreadDialog">新建会话</button></div>
             <div class="message-layout-local">
               <aside class="message-thread-list">
                 <button v-for="th in threads" :key="th.id" class="conversation-item" :class="{ active: activeThreadId === th.id }" @click="activeThreadId = th.id">
-                  <strong>{{ th.title }}</strong>
+                  <div class="conversation-top">
+                    <strong>{{ th.title }}</strong>
+                    <span class="status-tag" :class="th.status === 'resolved' ? 'status-approved' : 'status-pending'">{{ th.status === 'resolved' ? '已解决' : '未解决' }}</span>
+                  </div>
                   <p class="mono">{{ th.order_no }}</p>
+                  <p>{{ th.description || '-' }}</p>
                 </button>
               </aside>
               <section class="message-thread-view">
+                <header class="thread-header" v-if="activeThread">
+                  <h2>{{ activeThread.title }}</h2>
+                  <p>{{ activeThread.status === 'resolved' ? '已解决' : '未解决' }}</p>
+                </header>
+
                 <div class="thread-messages local-thread">
                   <article v-for="m in rootMessages" :key="m.id" class="chat-bubble message-record" :class="m.sender_role === 'admin' ? 'admin' : 'customer'">
-                    <strong>{{ m.sender_role === 'admin' ? 'Admin' : 'Customer' }}</strong>
+                    <div class="message-head-row">
+                      <strong>{{ m.sender_role === 'admin' ? 'Admin' : 'Customer' }}</strong>
+                      <span>{{ formatDate(m.created_at) }}</span>
+                    </div>
                     <p>{{ m.content }}</p>
-                    <span>{{ formatDate(m.created_at) }}</span>
+                    <div class="reply-action-row"><button class="text-button" @click="quoteMessage(m.id)">引用回复</button></div>
 
                     <div v-if="repliesByParent[m.id]?.length" class="reply-list">
                       <article v-for="r in repliesByParent[m.id]" :key="r.id" class="chat-bubble reply message-record" :class="r.sender_role === 'admin' ? 'admin' : 'customer'">
-                        <strong>{{ r.sender_role === 'admin' ? 'Admin' : 'Customer' }}</strong>
+                        <div class="message-head-row">
+                          <strong>{{ r.sender_role === 'admin' ? 'Admin' : 'Customer' }}</strong>
+                          <span>{{ formatDate(r.created_at) }}</span>
+                        </div>
                         <p>{{ r.content }}</p>
-                        <span>{{ formatDate(r.created_at) }}</span>
                       </article>
-                    </div>
-
-                    <div class="reply-action-row">
-                      <button class="text-button" @click="toggleReply(m.id)">回复该条</button>
-                    </div>
-                    <div v-if="replyOpenMap[m.id]" class="reply-editor">
-                      <textarea v-model="replyDraftMap[m.id]" rows="2" placeholder="输入回复内容" />
-                      <button class="primary-button" @click="sendMessage(m.id)">发送回复</button>
                     </div>
                   </article>
                 </div>
 
                 <footer class="thread-input">
+                  <div v-if="quotedMessage" class="quote-bar">
+                    <span>引用: {{ quotedMessage.content }}</span>
+                    <button class="text-button" @click="clearQuote">取消</button>
+                  </div>
                   <textarea v-model="newMessage" rows="3" placeholder="输入新消息" />
-                  <button class="primary-button" @click="sendMessage()">发送消息</button>
+                  <button class="primary-button" @click="sendMessage">发送消息</button>
                 </footer>
               </section>
             </div>
           </article>
         </section>
       </template>
-
       <div v-else class="empty-state"><p>{{ t('common.noData') }}</p></div>
     </section>
 
@@ -536,6 +591,18 @@ const formatDate = (d: string | null) => (d ? new Date(d).toLocaleString() : '-'
             <label class="field"><span>单价</span><input v-model="itemForm.unit_price" type="number" min="0" step="0.01" /></label>
           </div>
           <div class="header-actions modal-actions"><button class="secondary-button" @click="showItemDialog = false">取消</button><button class="primary-button" @click="saveItem">保存</button></div>
+        </section>
+      </div>
+
+      <div v-if="showThreadDialog" class="modal-overlay" @click.self="showThreadDialog = false">
+        <section class="modal-panel order-form-modal" role="dialog" aria-modal="true">
+          <div class="card-head modal-head"><h2>新建会话主题</h2><button class="text-button modal-close" @click="showThreadDialog = false">关闭</button></div>
+          <div class="account-form-grid">
+            <label class="field"><span>主题</span><input v-model="threadForm.title" type="text" placeholder="例如：包装标识确认" /></label>
+            <label class="field"><span>状态</span><select v-model="threadForm.status" class="customer-select"><option value="open">未解决</option><option value="resolved">已解决</option></select></label>
+            <label class="field field-span-2"><span>问题描述</span><textarea v-model="threadForm.description" rows="4" placeholder="填写问题背景、需求、截止时间等" /></label>
+          </div>
+          <div class="header-actions modal-actions"><button class="secondary-button" @click="showThreadDialog = false">取消</button><button class="primary-button" @click="createThread">创建会话</button></div>
         </section>
       </div>
     </Teleport>

@@ -1565,6 +1565,37 @@ select:focus-visible {
   min-width: 180px;
 }
 
+.status-saving {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.breadcrumb-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.breadcrumb-link {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.breadcrumb-link:hover {
+  color: var(--accent);
+}
+
+.breadcrumb-current {
+  color: var(--text-main);
+}
+
+.breadcrumb-sep {
+  color: var(--text-dim);
+}
+
 .compact-card {
   background:
     linear-gradient(135deg, rgba(255, 202, 69, 0.06), rgba(255, 255, 255, 0.02)),
@@ -1644,6 +1675,67 @@ select:focus-visible {
   margin-top: 8px;
   display: grid;
   gap: 8px;
+}
+
+.quote-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border: 1px dashed rgba(255, 202, 69, 0.36);
+  background: rgba(255, 202, 69, 0.08);
+  color: var(--text-muted);
+  padding: 8px 10px;
+  font-size: 12px;
+}
+
+.message-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.logistics-row-list {
+  gap: 10px;
+}
+
+.logistics-row-card {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 0.8fr) minmax(220px, 1.5fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.logistics-main {
+  display: grid;
+  gap: 4px;
+}
+
+.logistics-main p,
+.logistics-note-block p,
+.empty-line {
+  margin: 0;
+}
+
+.logistics-date-block {
+  display: grid;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.logistics-actions {
+  justify-self: end;
+}
+
+.empty-line {
+  padding: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  color: var(--text-muted);
 }
 
 .portal-shell .metric-card strong {
@@ -1805,6 +1897,11 @@ select:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .logistics-row-card {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
   .field-span-2 {
     grid-column: span 1;
   }
@@ -1877,6 +1974,10 @@ select:focus-visible {
 
   .modal-panel {
     padding: 16px;
+  }
+
+  .breadcrumb-row {
+    flex-wrap: wrap;
   }
 
   .pagination-controls {

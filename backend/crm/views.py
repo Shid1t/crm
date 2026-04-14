@@ -279,7 +279,7 @@ class MessageThreadViewSet(AdminWriteMixin, CustomerScopedQuerysetMixin, viewset
     permission_classes = [IsAdminOrCustomerScoped]
     serializer_class = MessageThreadSerializer
     queryset = MessageThread.objects.select_related("customer", "order").filter(Q(order__is_deleted=False) | Q(order__isnull=True)).order_by("-id")
-    http_method_names = ["get", "post", "head", "options"]
+    http_method_names = ["get", "post", "put", "patch", "head", "options"]
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -296,6 +296,15 @@ class MessageThreadViewSet(AdminWriteMixin, CustomerScopedQuerysetMixin, viewset
             ensure_order_writable(order)
             if customer and customer.id != order.customer_id:
                 raise ValidationError({"customer": "Customer does not match order."})
+            serializer.save(customer=order.customer)
+            return
+        serializer.save()
+
+    def perform_update(self, serializer):
+        self.ensure_admin_write()
+        order = serializer.validated_data.get("order", serializer.instance.order)
+        if order:
+            ensure_order_writable(order)
             serializer.save(customer=order.customer)
             return
         serializer.save()
