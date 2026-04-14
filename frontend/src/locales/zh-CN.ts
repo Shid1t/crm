@@ -62,16 +62,12 @@ const messages = {
     welcome: '工业级订单协同总览',
     overview:
       '聚焦客户、订单、确认、文件与物流关键节点，帮助团队快速处理当日待办。',
-    searchPlaceholder: '搜索客户、订单编号或文件名',
-    primaryAction: '创建订单',
-    secondaryAction: '新增客户',
     sections: {
       metrics: '核心指标',
       todo: '待处理事项',
       progress: '订单推进看板',
       logistics: '物流监控',
       activity: '最近动态',
-      catalog: '主营品类',
     },
     menus: {
       dashboard: '仪表盘',
@@ -105,6 +101,13 @@ const messages = {
       production: '生产中',
       shipped: '已发货',
       done: '已完成',
+      totalOrders: '总订单数 {total}',
+    },
+    user: {
+      account: '当前账号',
+      currentTime: '当前时间',
+      logout: '退出登录',
+      unknown: '未知账号',
     },
     logistics: {
       delayed: '异常预警',
@@ -115,14 +118,6 @@ const messages = {
       created: '管理员新建了订单 SO-240318',
       revised: '客户请求调整包装标签内容',
       uploaded: '上传了发货资料与装柜照片',
-    },
-    catalog: {
-      tools: '锂电工具',
-      toolsDesc: '电钻、冲击扳手、角磨机等高频协同订单。',
-      machinery: '小型机械',
-      machineryDesc: '压缩机、切割设备与便携式施工机械。',
-      accessories: '配件与耗材',
-      accessoriesDesc: '电池包、充电器、刀片、紧固件与周边物料。',
     },
   },
   customer: {
@@ -162,14 +157,15 @@ const messages = {
     subtitle: '统一查看订单状态、确认进度与交付节奏，保障五金锂电工具及小型机械项目按期推进。',
     filters: {
       all: '全部状态',
-      keywordPlaceholder: '搜索订单号、客户名称或金额',
+      keywordPlaceholder: '搜索订单号、客户名称、描述或金额',
       resultCount: '当前筛选订单',
     },
     columns: {
       orderNo: '订单编号',
       customerName: '客户公司',
-      orderDate: '下单日期',
+      orderDate: '创建日期',
       amount: '订单金额',
+      description: '订单描述',
       currency: '币种',
       eta: '预计交期',
       confirmationRate: '确认完成度',
@@ -178,11 +174,11 @@ const messages = {
     },
     status: {
       pending: '待确认',
-      confirmed: '已确认',
-      production: '生产中',
+      pending_payment: '待付款',
+      paid: '已付款',
+      pending_shipment: '待发货',
       shipped: '已发货',
       completed: '已完成',
-      exception: '异常处理中',
     },
     actions: {
       create: '创建订单',
@@ -195,7 +191,8 @@ const messages = {
       deleteConfirm: '确认删除订单 {orderNo} 吗？',
     },
     form: {
-      required: '请完整填写订单编号、客户、下单日期和金额。',
+      required: '请完整填写订单编号、客户、创建日期和金额。',
+      noCustomer: '暂无可选客户，请先创建客户后再创建订单。',
     },
     pagination: {
       summary: '显示第 {start}-{end} 条，共 {total} 条',
@@ -217,7 +214,7 @@ const messages = {
   orderDetail: {
     kicker: '订单详情',
     title: '订单协同档案',
-    subtitle: '集中展示订单商品、确认项、文件权限、物流节点与沟通留痕。',
+    subtitle: '集中展示订单商品、文件权限、物流节点与沟通留痕。',
     actions: {
       back: '返回订单列表',
       update: '更新订单状态',
@@ -232,7 +229,7 @@ const messages = {
     },
     basic: {
       customer: '客户主体',
-      orderDate: '下单日期',
+      orderDate: '创建日期',
       currency: '币种',
       amount: '订单金额',
       eta: '预计交期',

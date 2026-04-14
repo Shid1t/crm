@@ -62,16 +62,12 @@ const messages = {
     welcome: 'Industrial Order Collaboration Overview',
     overview:
       'Focus on customers, orders, confirmations, files, and shipment milestones so teams can process daily priorities faster.',
-    searchPlaceholder: 'Search customer, order no., or file name',
-    primaryAction: 'Create Order',
-    secondaryAction: 'Add Customer',
     sections: {
       metrics: 'Core Metrics',
       todo: 'To-Do Queue',
       progress: 'Order Progress Board',
       logistics: 'Shipment Monitor',
       activity: 'Recent Activity',
-      catalog: 'Core Categories',
     },
     menus: {
       dashboard: 'Dashboard',
@@ -105,6 +101,13 @@ const messages = {
       production: 'In Production',
       shipped: 'Shipped',
       done: 'Completed',
+      totalOrders: 'Total Orders {total}',
+    },
+    user: {
+      account: 'Current Account',
+      currentTime: 'Current Time',
+      logout: 'Sign Out',
+      unknown: 'Unknown Account',
     },
     logistics: {
       delayed: 'Risk Alert',
@@ -115,14 +118,6 @@ const messages = {
       created: 'Admin created order SO-240318',
       revised: 'Customer requested a packaging label revision',
       uploaded: 'Shipment documents and container photos were uploaded',
-    },
-    catalog: {
-      tools: 'Lithium Tools',
-      toolsDesc: 'Drills, impact wrenches, angle grinders, and other high-frequency collaboration orders.',
-      machinery: 'Compact Machinery',
-      machineryDesc: 'Compressors, cutting equipment, and portable construction machines.',
-      accessories: 'Accessories & Consumables',
-      accessoriesDesc: 'Battery packs, chargers, blades, fasteners, and adjacent materials.',
     },
   },
   customer: {
@@ -164,14 +159,15 @@ const messages = {
       'Track order status, confirmation progress, and delivery rhythm in one place for hardware lithium tools and compact machinery projects.',
     filters: {
       all: 'All Status',
-      keywordPlaceholder: 'Search by order no., customer name, or amount',
+      keywordPlaceholder: 'Search by order no., customer, description, or amount',
       resultCount: 'Filtered orders',
     },
     columns: {
       orderNo: 'Order No.',
       customerName: 'Customer',
-      orderDate: 'Order Date',
+      orderDate: 'Created Date',
       amount: 'Amount',
+      description: 'Description',
       currency: 'Currency',
       eta: 'ETA',
       confirmationRate: 'Confirmation Rate',
@@ -180,11 +176,11 @@ const messages = {
     },
     status: {
       pending: 'Pending Confirmation',
-      confirmed: 'Confirmed',
-      production: 'In Production',
+      pending_payment: 'Pending Payment',
+      paid: 'Paid',
+      pending_shipment: 'Pending Shipment',
       shipped: 'Shipped',
       completed: 'Completed',
-      exception: 'Exception Handling',
     },
     actions: {
       create: 'Create Order',
@@ -197,7 +193,8 @@ const messages = {
       deleteConfirm: 'Are you sure you want to delete order {orderNo}?',
     },
     form: {
-      required: 'Please fill in order no., customer, order date, and amount.',
+      required: 'Please fill in order no., customer, created date, and amount.',
+      noCustomer: 'No customer available. Please create a customer before creating an order.',
     },
     pagination: {
       summary: 'Showing {start}-{end} of {total}',
@@ -219,7 +216,7 @@ const messages = {
   orderDetail: {
     kicker: 'Order Details',
     title: 'Order Collaboration Record',
-    subtitle: 'Centralized view of line items, confirmation tasks, file visibility, logistics milestones, and message traces.',
+    subtitle: 'Centralized view of line items, file visibility, logistics milestones, and message traces.',
     actions: {
       back: 'Back to Order List',
       update: 'Update Order Status',
@@ -234,7 +231,7 @@ const messages = {
     },
     basic: {
       customer: 'Customer',
-      orderDate: 'Order Date',
+      orderDate: 'Created Date',
       currency: 'Currency',
       amount: 'Amount',
       eta: 'ETA',

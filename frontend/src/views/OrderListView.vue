@@ -7,7 +7,7 @@ import { createOrder, deleteOrder, fetchConfirmations, fetchCustomers, fetchOrde
 import type { CustomerDTO, OrderDTO } from '../api/resources'
 import LocaleSwitch from '../components/LocaleSwitch.vue'
 
-type OrderStatus = 'pending' | 'confirmed' | 'production' | 'shipped' | 'completed' | 'exception'
+type OrderStatus = 'pending' | 'pending_payment' | 'paid' | 'pending_shipment' | 'shipped' | 'completed'
 
 interface OrderRow {
   id: number
@@ -16,6 +16,7 @@ interface OrderRow {
   customerName: string
   orderDate: string
   amount: string
+  description: string
   currency: string
   eta: string
   status: OrderStatus
@@ -45,6 +46,7 @@ const form = ref({
   customer: '',
   order_date: '',
   amount: '',
+  description: '',
   currency: 'USD',
   eta: '',
   status: 'pending' as OrderStatus,
@@ -79,6 +81,7 @@ async function loadData() {
         customerName: item.customer_name || '-',
         orderDate: item.order_date,
         amount: item.amount,
+        description: item.description || '-',
         currency: item.currency,
         eta: item.eta || '-',
         status: item.status,
@@ -109,18 +112,18 @@ const menuItems = computed(() => [
 const statusOptions = computed(() => [
   { value: 'all', label: t('order.filters.all') },
   { value: 'pending', label: t('order.status.pending') },
-  { value: 'confirmed', label: t('order.status.confirmed') },
-  { value: 'production', label: t('order.status.production') },
+  { value: 'pending_payment', label: t('order.status.pending_payment') },
+  { value: 'paid', label: t('order.status.paid') },
+  { value: 'pending_shipment', label: t('order.status.pending_shipment') },
   { value: 'shipped', label: t('order.status.shipped') },
   { value: 'completed', label: t('order.status.completed') },
-  { value: 'exception', label: t('order.status.exception') },
 ])
 
 const filteredOrders = computed(() => {
   const keyword = search.value.toLowerCase().trim()
   return orders.value.filter((item) => {
     const matchStatus = statusFilter.value === 'all' || item.status === statusFilter.value
-    const haystack = `${item.orderNo} ${item.customerName} ${item.amount}`.toLowerCase()
+    const haystack = `${item.orderNo} ${item.customerName} ${item.amount} ${item.description}`.toLowerCase()
     const matchKeyword = !keyword || haystack.includes(keyword)
     return matchStatus && matchKeyword
   })
@@ -179,11 +182,13 @@ function statusLabel(status: OrderStatus) {
 
 function openCreate() {
   editingId.value = null
+  errorMessage.value = ''
   form.value = {
     order_no: '',
     customer: String(customers.value[0]?.id || ''),
     order_date: '',
     amount: '',
+    description: '',
     currency: 'USD',
     eta: '',
     status: 'pending',
@@ -195,11 +200,13 @@ function openCreate() {
 
 function openEdit(row: OrderRow) {
   editingId.value = row.id
+  errorMessage.value = ''
   form.value = {
     order_no: row.orderNo,
     customer: String(row.customer),
     order_date: row.orderDate,
     amount: row.amount,
+    description: row.description,
     currency: row.currency,
     eta: row.eta === '-' ? '' : row.eta,
     status: row.status,
@@ -212,6 +219,7 @@ function openEdit(row: OrderRow) {
 function closeForm() {
   showForm.value = false
   showCloseConfirm.value = false
+  errorMessage.value = ''
 }
 
 function requestCloseForm() {
@@ -261,6 +269,11 @@ async function confirmDelete() {
 }
 
 async function submitForm() {
+  if (!customers.value.length) {
+    errorMessage.value = t('order.form.noCustomer')
+    return
+  }
+
   if (!form.value.order_no || !form.value.customer || !form.value.order_date || !form.value.amount) {
     errorMessage.value = t('order.form.required')
     return
@@ -273,6 +286,7 @@ async function submitForm() {
     customer: Number(form.value.customer),
     order_date: form.value.order_date,
     amount: form.value.amount,
+    description: form.value.description,
     currency: form.value.currency,
     eta: form.value.eta || null,
     status: form.value.status,
@@ -331,7 +345,6 @@ async function removeOrder(row: OrderRow) {
         </div>
 
         <div class="header-actions">
-          <button class="secondary-button" @click="loadData">{{ t('common.retry') }}</button>
           <button class="primary-button" @click="openCreate">{{ t('order.actions.create') }}</button>
         </div>
       </header>
@@ -359,6 +372,7 @@ async function removeOrder(row: OrderRow) {
               <th>{{ t('order.columns.customerName') }}</th>
               <th>{{ t('order.columns.orderDate') }}</th>
               <th>{{ t('order.columns.amount') }}</th>
+              <th>{{ t('order.columns.description') }}</th>
               <th>{{ t('order.columns.currency') }}</th>
               <th>{{ t('order.columns.eta') }}</th>
               <th>{{ t('order.columns.confirmationRate') }}</th>
@@ -372,6 +386,7 @@ async function removeOrder(row: OrderRow) {
               <td>{{ item.customerName }}</td>
               <td>{{ item.orderDate }}</td>
               <td>{{ item.amount }}</td>
+              <td class="description-cell">{{ item.description }}</td>
               <td>{{ item.currency }}</td>
               <td>{{ item.eta }}</td>
               <td>{{ item.confirmationRate }}</td>
@@ -387,7 +402,7 @@ async function removeOrder(row: OrderRow) {
               </td>
             </tr>
             <tr v-if="!paginatedOrders.length">
-              <td colspan="9">{{ t('common.noData') }}</td>
+              <td colspan="10">{{ t('common.noData') }}</td>
             </tr>
           </tbody>
         </table>
@@ -437,7 +452,7 @@ async function removeOrder(row: OrderRow) {
         </div>
       </section>
 
-      <p v-if="errorMessage" class="form-feedback visible">{{ errorMessage }}</p>
+      <p v-if="errorMessage && !showForm" class="form-feedback visible">{{ errorMessage }}</p>
 
       <div v-if="loading" class="loading-state">
         <div class="spinner" />
@@ -460,7 +475,8 @@ async function removeOrder(row: OrderRow) {
             </label>
             <label class="field">
               <span>{{ t('order.columns.customerName') }}</span>
-              <select v-model="form.customer" class="customer-select">
+              <select v-model="form.customer" class="customer-select" :disabled="!customers.length">
+                <option v-if="!customers.length" value="">{{ t('order.form.noCustomer') }}</option>
                 <option v-for="c in customers" :key="c.id" :value="String(c.id)">{{ c.company_name }}</option>
               </select>
             </label>
@@ -471,6 +487,10 @@ async function removeOrder(row: OrderRow) {
             <label class="field">
               <span>{{ t('order.columns.amount') }}</span>
               <input v-model="form.amount" type="number" min="0" step="0.01" />
+            </label>
+            <label class="field field-span-2">
+              <span>{{ t('order.columns.description') }}</span>
+              <textarea v-model="form.description" rows="3" />
             </label>
             <label class="field">
               <span>{{ t('order.columns.currency') }}</span>
@@ -492,8 +512,10 @@ async function removeOrder(row: OrderRow) {
 
           <div class="header-actions modal-actions">
             <button class="secondary-button" type="button" @click="requestCloseForm">{{ t('order.actions.cancel') }}</button>
-            <button class="primary-button" type="button" :disabled="submitting" @click="submitForm">{{ t('order.actions.save') }}</button>
+            <button class="primary-button" type="button" :disabled="submitting || !customers.length" @click="submitForm">{{ t('order.actions.save') }}</button>
           </div>
+
+          <p v-if="errorMessage" class="form-feedback visible">{{ errorMessage }}</p>
         </section>
       </div>
 

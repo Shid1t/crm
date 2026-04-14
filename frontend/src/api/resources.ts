@@ -1,4 +1,4 @@
-import { apiDelete, apiGet, apiPost, apiPut } from './client'
+import { apiDelete, apiGet, apiMultipartPost, apiPost, apiPut } from './client'
 
 export interface CustomerDTO {
   id: number
@@ -30,23 +30,27 @@ export interface OrderDTO {
   customer_name?: string
   order_date: string
   amount: string
+  description: string
   currency: string
   eta: string | null
-  status: 'pending' | 'confirmed' | 'production' | 'shipped' | 'completed' | 'exception'
+  status: 'pending' | 'pending_payment' | 'paid' | 'pending_shipment' | 'shipped' | 'completed'
 }
 
 export interface ConfirmationDTO {
   id: number
   task_no: string
+  order: number
   order_no?: string
   item_type: string
   item_name: string
   status: 'pending' | 'approved' | 'revise' | 'resubmitted'
+  latest_feedback?: string
   updated_at: string
 }
 
 export interface FileDTO {
   id: number
+  order: number
   file_name: string
   order_no?: string
   file_type: string
@@ -55,10 +59,12 @@ export interface FileDTO {
   uploaded_at: string
   visibility: 'customer' | 'internal'
   uploader_name?: string
+  file_url?: string
 }
 
 export interface LogisticsDTO {
   id: number
+  order: number
   order_no?: string
   company: string
   tracking_no: string
@@ -80,6 +86,7 @@ export interface MessageThreadDTO {
 export interface MessageRecordDTO {
   id: number
   thread: number
+  parent: number | null
   sender_role: 'admin' | 'customer'
   sender_name?: string
   content: string
@@ -135,9 +142,63 @@ export function fetchConfirmations(params?: { order_no?: string }) {
   return apiGet<ConfirmationDTO[]>(`/confirmations/${query}`)
 }
 
+export function createConfirmation(payload: {
+  task_no?: string
+  order: number
+  item_type: string
+  item_name: string
+  status: ConfirmationDTO['status']
+  latest_feedback?: string
+}) {
+  return apiPost<ConfirmationDTO>('/confirmations/', payload)
+}
+
+export function updateConfirmation(id: number, payload: Partial<{
+  task_no: string
+  order: number
+  item_type: string
+  item_name: string
+  status: ConfirmationDTO['status']
+  latest_feedback: string
+}>) {
+  return apiPut<ConfirmationDTO>(`/confirmations/${id}/`, payload)
+}
+
+export function deleteConfirmation(id: number) {
+  return apiDelete(`/confirmations/${id}/`)
+}
+
 export function fetchFiles(params?: { order_no?: string }) {
   const query = params?.order_no ? `?order_no=${params.order_no}` : ''
   return apiGet<FileDTO[]>(`/files/${query}`)
+}
+
+export function uploadOrderFile(payload: {
+  order: number
+  file: File
+  file_type: string
+  version?: string
+  visibility?: FileDTO['visibility']
+}) {
+  const form = new FormData()
+  form.append('order', String(payload.order))
+  form.append('file', payload.file)
+  form.append('file_type', payload.file_type)
+  form.append('version', payload.version || 'v1')
+  form.append('visibility', payload.visibility || 'customer')
+  return apiMultipartPost<FileDTO>('/files/', form)
+}
+
+export function updateFileRecord(id: number, payload: Partial<{
+  file_type: string
+  version: string
+  visibility: FileDTO['visibility']
+}>) {
+  return apiPut<FileDTO>(`/files/${id}/`, payload)
+}
+
+export function deleteFileRecord(id: number) {
+  return apiDelete(`/files/${id}/`)
 }
 
 export function fetchLogistics(params?: { order_no?: string }) {
@@ -145,9 +206,41 @@ export function fetchLogistics(params?: { order_no?: string }) {
   return apiGet<LogisticsDTO[]>(`/logistics/${query}`)
 }
 
+export function createLogistics(payload: {
+  order: number
+  company: string
+  tracking_no: string
+  etd?: string | null
+  eta?: string | null
+  status: LogisticsDTO['status']
+  latest_note?: string
+}) {
+  return apiPost<LogisticsDTO>('/logistics/', payload)
+}
+
+export function updateLogistics(id: number, payload: Partial<{
+  order: number
+  company: string
+  tracking_no: string
+  etd: string | null
+  eta: string | null
+  status: LogisticsDTO['status']
+  latest_note: string
+}>) {
+  return apiPut<LogisticsDTO>(`/logistics/${id}/`, payload)
+}
+
+export function deleteLogistics(id: number) {
+  return apiDelete(`/logistics/${id}/`)
+}
+
 export function fetchMessageThreads(params?: { order_no?: string }) {
   const query = params?.order_no ? `?order_no=${params.order_no}` : ''
   return apiGet<MessageThreadDTO[]>(`/messages/${query}`)
+}
+
+export function createMessageThread(payload: { customer: number; order: number; title: string }) {
+  return apiPost<MessageThreadDTO>('/messages/', payload)
 }
 
 export function fetchMessageRecords(threadId: number) {
@@ -159,9 +252,36 @@ export function fetchOrderItems(params?: { order_no?: string }) {
   return apiGet<OrderItemDTO[]>(`/order-items/${query}`)
 }
 
-export function createMessageRecord(threadId: number, content: string) {
+export function createOrderItem(payload: {
+  order: number
+  sku: string
+  name: string
+  spec?: string
+  qty: number
+  unit_price: string
+}) {
+  return apiPost<OrderItemDTO>('/order-items/', payload)
+}
+
+export function updateOrderItem(id: number, payload: Partial<{
+  order: number
+  sku: string
+  name: string
+  spec: string
+  qty: number
+  unit_price: string
+}>) {
+  return apiPut<OrderItemDTO>(`/order-items/${id}/`, payload)
+}
+
+export function deleteOrderItem(id: number) {
+  return apiDelete(`/order-items/${id}/`)
+}
+
+export function createMessageRecord(threadId: number, content: string, parent?: number) {
   return apiPost<MessageRecordDTO>('/message-records/', {
     thread: threadId,
     content,
+    parent: parent || null,
   })
 }

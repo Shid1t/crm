@@ -52,20 +52,41 @@ class ConfirmationTaskSerializer(serializers.ModelSerializer):
     class Meta:
         model = ConfirmationTask
         fields = "__all__"
+        extra_kwargs = {
+            "task_no": {"required": False},
+        }
 
 
 class FileRecordSerializer(serializers.ModelSerializer):
     order_no = serializers.CharField(source="order.order_no", read_only=True)
     uploader_name = serializers.SerializerMethodField()
+    uploaded_at = serializers.DateTimeField(source="created_at", read_only=True)
+    file_url = serializers.SerializerMethodField()
 
     class Meta:
         model = FileRecord
         fields = "__all__"
+        extra_kwargs = {
+            "file_name": {"required": False},
+            "file_path": {"required": False},
+            "size": {"required": False},
+        }
 
     def get_uploader_name(self, obj):
         if obj.uploaded_by:
             return obj.uploaded_by.username
         return None
+
+    def get_file_url(self, obj):
+        request = self.context.get("request")
+        if not obj.file_path:
+            return None
+        if obj.file_path.startswith("http://") or obj.file_path.startswith("https://"):
+            return obj.file_path
+        if obj.file_path.startswith("/"):
+            return request.build_absolute_uri(obj.file_path) if request else obj.file_path
+        path = f"/media/{obj.file_path}"
+        return request.build_absolute_uri(path) if request else path
 
 
 class LogisticsRecordSerializer(serializers.ModelSerializer):

@@ -62,16 +62,12 @@ const messages = {
     welcome: 'Kabuuang Tanaw ng Industrial Order Collaboration',
     overview:
       'Nakatuon sa customers, orders, confirmations, files, at shipment milestones upang mas mabilis maasikaso ng team ang araw-araw na prayoridad.',
-    searchPlaceholder: 'Maghanap ng customer, order no., o file name',
-    primaryAction: 'Lumikha ng Order',
-    secondaryAction: 'Magdagdag ng Customer',
     sections: {
       metrics: 'Core Metrics',
       todo: 'To-Do Queue',
       progress: 'Order Progress Board',
       logistics: 'Shipment Monitor',
       activity: 'Recent Activity',
-      catalog: 'Core Categories',
     },
     menus: {
       dashboard: 'Dashboard',
@@ -105,6 +101,13 @@ const messages = {
       production: 'In Production',
       shipped: 'Shipped',
       done: 'Completed',
+      totalOrders: 'Kabuuang Orders {total}',
+    },
+    user: {
+      account: 'Kasalukuyang Account',
+      currentTime: 'Kasalukuyang Oras',
+      logout: 'Mag-sign out',
+      unknown: 'Hindi Kilalang Account',
     },
     logistics: {
       delayed: 'Risk Alert',
@@ -115,14 +118,6 @@ const messages = {
       created: 'Gumawa ang admin ng order SO-240318',
       revised: 'Humiling ang customer ng pagbabago sa packaging label',
       uploaded: 'Na-upload ang shipment documents at mga larawan ng container',
-    },
-    catalog: {
-      tools: 'Lithium Tools',
-      toolsDesc: 'Mga drill, impact wrench, angle grinder, at iba pang high-frequency collaboration orders.',
-      machinery: 'Compact Machinery',
-      machineryDesc: 'Mga compressor, cutting equipment, at portable construction machines.',
-      accessories: 'Accessories at Consumables',
-      accessoriesDesc: 'Battery packs, chargers, blades, fasteners, at iba pang kaugnay na materyales.',
     },
   },
   customer: {
@@ -164,14 +159,15 @@ const messages = {
       'Subaybayan sa iisang lugar ang order status, confirmation progress, at delivery rhythm para sa hardware lithium tools at compact machinery projects.',
     filters: {
       all: 'Lahat ng Status',
-      keywordPlaceholder: 'Maghanap gamit ang order no., customer name, o amount',
+      keywordPlaceholder: 'Maghanap gamit ang order no., customer, description, o amount',
       resultCount: 'Na-filter na orders',
     },
     columns: {
       orderNo: 'Order No.',
       customerName: 'Customer',
-      orderDate: 'Order Date',
+      orderDate: 'Created Date',
       amount: 'Amount',
+      description: 'Description',
       currency: 'Currency',
       eta: 'ETA',
       confirmationRate: 'Confirmation Rate',
@@ -180,11 +176,11 @@ const messages = {
     },
     status: {
       pending: 'Pending Confirmation',
-      confirmed: 'Confirmed',
-      production: 'In Production',
+      pending_payment: 'Pending Payment',
+      paid: 'Paid',
+      pending_shipment: 'Pending Shipment',
       shipped: 'Shipped',
       completed: 'Completed',
-      exception: 'Exception Handling',
     },
     actions: {
       create: 'Create Order',
@@ -197,7 +193,8 @@ const messages = {
       deleteConfirm: 'Sigurado ka bang tatanggalin ang order {orderNo}?',
     },
     form: {
-      required: 'Pakipunan ang order no., customer, order date, at amount.',
+      required: 'Pakipunan ang order no., customer, created date, at amount.',
+      noCustomer: 'Walang available na customer. Gumawa muna ng customer bago gumawa ng order.',
     },
     pagination: {
       summary: 'Ipinapakita ang {start}-{end} mula sa {total}',
@@ -219,7 +216,7 @@ const messages = {
   orderDetail: {
     kicker: 'Order Details',
     title: 'Order Collaboration Record',
-    subtitle: 'Sentralisadong tanaw ng line items, confirmation tasks, file visibility, logistics milestones, at message traces.',
+    subtitle: 'Sentralisadong tanaw ng line items, file visibility, logistics milestones, at message traces.',
     actions: {
       back: 'Back to Order List',
       update: 'Update Order Status',
@@ -234,7 +231,7 @@ const messages = {
     },
     basic: {
       customer: 'Customer',
-      orderDate: 'Order Date',
+      orderDate: 'Created Date',
       currency: 'Currency',
       amount: 'Amount',
       eta: 'ETA',

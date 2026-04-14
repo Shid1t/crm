@@ -140,3 +140,30 @@ export async function apiDelete(path: string): Promise<void> {
     throw new Error(`Request failed: ${response.status}`)
   }
 }
+
+export async function apiMultipartPost<T>(path: string, formData: FormData): Promise<T> {
+  const token = localStorage.getItem('crm-access-token')
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    body: formData,
+  })
+
+  if (response.status === 401) {
+    const refreshed = await refreshAccessToken()
+    if (refreshed) {
+      return apiMultipartPost(path, formData)
+    }
+    localStorage.removeItem('crm-access-token')
+    localStorage.removeItem('crm-refresh-token')
+    localStorage.removeItem('crm-user-role')
+    window.location.href = '/login'
+    throw new Error('Unauthorized')
+  }
+
+  if (!response.ok) {
+    throw new Error(`Request failed: ${response.status}`)
+  }
+
+  return (await response.json()) as T
+}

@@ -6,7 +6,7 @@ import { useI18n } from 'vue-i18n'
 import { fetchConfirmations, fetchOrders } from '../api/resources'
 import LocaleSwitch from '../components/LocaleSwitch.vue'
 
-type PortalOrderStatus = 'pending' | 'confirmed' | 'production' | 'shipped' | 'completed' | 'exception'
+type PortalOrderStatus = 'pending' | 'pending_payment' | 'paid' | 'pending_shipment' | 'shipped' | 'completed'
 
 interface PortalOrderRow {
   orderNo: string
@@ -74,11 +74,11 @@ const menuItems = computed(() => [
 const statusOptions = computed(() => [
   { value: 'all', label: t('portalOrders.filters.all') },
   { value: 'pending', label: t('order.status.pending') },
-  { value: 'confirmed', label: t('order.status.confirmed') },
-  { value: 'production', label: t('order.status.production') },
+  { value: 'pending_payment', label: t('order.status.pending_payment') },
+  { value: 'paid', label: t('order.status.paid') },
+  { value: 'pending_shipment', label: t('order.status.pending_shipment') },
   { value: 'shipped', label: t('order.status.shipped') },
   { value: 'completed', label: t('order.status.completed') },
-  { value: 'exception', label: t('order.status.exception') },
 ])
 
 const filteredRows = computed(() => {

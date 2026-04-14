@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { RouterLink } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 
+import { fetchCurrentUser } from '../api/auth'
 import { fetchConfirmations, fetchCustomers, fetchLogistics, fetchOrders } from '../api/resources'
 import LocaleSwitch from '../components/LocaleSwitch.vue'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
+const router = useRouter()
 
 const menuItems = computed(() => [
   { key: 'dashboard', label: t('dashboard.menus.dashboard'), to: '/admin/dashboard' },
@@ -40,16 +43,47 @@ const todoItems = computed(() => [
 ])
 
 const progressValues = ref({ waiting: 0, confirmed: 0, production: 0, shipped: 0, done: 0 })
+const totalOrderCount = computed(() =>
+  Object.values(progressValues.value).reduce((sum, current) => sum + current, 0),
+)
 
 const progressItems = computed(() => [
-  { label: t('dashboard.progress.waiting'), value: progressValues.value.waiting },
-  { label: t('dashboard.progress.confirmed'), value: progressValues.value.confirmed },
-  { label: t('dashboard.progress.production'), value: progressValues.value.production },
-  { label: t('dashboard.progress.shipped'), value: progressValues.value.shipped },
-  { label: t('dashboard.progress.done'), value: progressValues.value.done },
+  {
+    key: 'waiting',
+    label: t('dashboard.progress.waiting'),
+    value: progressValues.value.waiting,
+    ratio: totalOrderCount.value > 0 ? Math.round((progressValues.value.waiting / totalOrderCount.value) * 100) : 0,
+  },
+  {
+    key: 'confirmed',
+    label: t('dashboard.progress.confirmed'),
+    value: progressValues.value.confirmed,
+    ratio: totalOrderCount.value > 0 ? Math.round((progressValues.value.confirmed / totalOrderCount.value) * 100) : 0,
+  },
+  {
+    key: 'production',
+    label: t('dashboard.progress.production'),
+    value: progressValues.value.production,
+    ratio: totalOrderCount.value > 0 ? Math.round((progressValues.value.production / totalOrderCount.value) * 100) : 0,
+  },
+  {
+    key: 'shipped',
+    label: t('dashboard.progress.shipped'),
+    value: progressValues.value.shipped,
+    ratio: totalOrderCount.value > 0 ? Math.round((progressValues.value.shipped / totalOrderCount.value) * 100) : 0,
+  },
+  {
+    key: 'done',
+    label: t('dashboard.progress.done'),
+    value: progressValues.value.done,
+    ratio: totalOrderCount.value > 0 ? Math.round((progressValues.value.done / totalOrderCount.value) * 100) : 0,
+  },
 ])
 
 const logisticsItems = ref<{ code: string; status: string; detail: string }[]>([])
+const accountName = ref('')
+const currentTimeText = ref('')
+let timer: number | null = null
 
 const activityItems = computed(() => [
   { time: '09:20', text: t('dashboard.activity.created') },
@@ -57,13 +91,30 @@ const activityItems = computed(() => [
   { time: '14:40', text: t('dashboard.activity.uploaded') },
 ])
 
-const catalogItems = computed(() => [
-  { title: t('dashboard.catalog.tools'), desc: t('dashboard.catalog.toolsDesc') },
-  { title: t('dashboard.catalog.machinery'), desc: t('dashboard.catalog.machineryDesc') },
-  { title: t('dashboard.catalog.accessories'), desc: t('dashboard.catalog.accessoriesDesc') },
-])
+function updateCurrentTime() {
+  const formatter = new Intl.DateTimeFormat(locale.value, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+  currentTimeText.value = formatter.format(new Date())
+}
+
+function logout() {
+  localStorage.removeItem('crm-access-token')
+  localStorage.removeItem('crm-refresh-token')
+  localStorage.removeItem('crm-user-role')
+  void router.push('/login')
+}
 
 onMounted(async () => {
+  updateCurrentTime()
+  timer = window.setInterval(updateCurrentTime, 1000)
+
   try {
     const [customers, orders, confirmations, logistics] = await Promise.all([
       fetchCustomers(),
@@ -72,25 +123,32 @@ onMounted(async () => {
       fetchLogistics(),
     ])
 
+    try {
+      const currentUser = await fetchCurrentUser()
+      accountName.value = currentUser.display_name || currentUser.username
+    } catch {
+      accountName.value = t('dashboard.user.unknown')
+    }
+
     const delivered = logistics.filter((item) => item.status === 'delivered').length
     const onTimeRate = logistics.length ? `${Math.round((delivered / logistics.length) * 100)}%` : '0%'
 
     metricValues.value = {
       activeCustomers: String(customers.length),
-      pendingOrders: String(orders.filter((item) => item.status === 'pending').length),
-      inProduction: String(orders.filter((item) => item.status === 'production').length),
+      pendingOrders: String(confirmations.filter((item) => item.status === 'pending').length),
+      inProduction: String(orders.filter((item) => item.status === 'pending_shipment').length),
       onTimeRate,
     }
 
     progressValues.value = {
-      waiting: confirmations.filter((item) => item.status === 'pending').length,
-      confirmed: confirmations.filter((item) => item.status === 'approved').length,
-      production: orders.filter((item) => item.status === 'production').length,
+      waiting: orders.filter((item) => item.status === 'pending').length,
+      confirmed: orders.filter((item) => item.status === 'pending_payment').length,
+      production: orders.filter((item) => item.status === 'paid').length,
       shipped: orders.filter((item) => item.status === 'shipped').length,
       done: orders.filter((item) => item.status === 'completed').length,
     }
 
-    logisticsItems.value = logistics.slice(0, 3).map((item) => ({
+    logisticsItems.value = logistics.map((item) => ({
       code: item.tracking_no,
       status: t(`logistics.status.${item.status}`),
       detail: item.eta || '-',
@@ -99,7 +157,18 @@ onMounted(async () => {
     metricValues.value = { activeCustomers: '0', pendingOrders: '0', inProduction: '0', onTimeRate: '0%' }
     progressValues.value = { waiting: 0, confirmed: 0, production: 0, shipped: 0, done: 0 }
     logisticsItems.value = []
+    accountName.value = t('dashboard.user.unknown')
   }
+})
+
+onUnmounted(() => {
+  if (timer !== null) {
+    window.clearInterval(timer)
+  }
+})
+
+watch(locale, () => {
+  updateCurrentTime()
 })
 </script>
 
@@ -136,10 +205,16 @@ onMounted(async () => {
           <p>{{ t('dashboard.overview') }}</p>
         </div>
 
-        <div class="header-actions">
-          <input :placeholder="t('dashboard.searchPlaceholder')" class="dashboard-search" type="text" />
-          <button class="secondary-button">{{ t('dashboard.secondaryAction') }}</button>
-          <button class="primary-button">{{ t('dashboard.primaryAction') }}</button>
+        <div class="header-user-panel">
+          <div class="header-user-block">
+            <span>{{ t('dashboard.user.account') }}</span>
+            <strong>{{ accountName || t('dashboard.user.unknown') }}</strong>
+          </div>
+          <div class="header-user-block">
+            <span>{{ t('dashboard.user.currentTime') }}</span>
+            <strong>{{ currentTimeText }}</strong>
+          </div>
+          <button class="secondary-button" type="button" @click="logout">{{ t('dashboard.user.logout') }}</button>
         </div>
       </header>
 
@@ -155,16 +230,20 @@ onMounted(async () => {
         <article class="dashboard-card wide-card">
           <div class="card-head">
             <h2>{{ t('dashboard.sections.progress') }}</h2>
+            <span class="progress-total">{{ t('dashboard.progress.totalOrders', { total: totalOrderCount }) }}</span>
           </div>
 
           <div class="progress-list">
-            <div v-for="item in progressItems" :key="item.label" class="progress-row">
+            <div v-for="item in progressItems" :key="item.label" class="progress-row" :data-status="item.key">
               <div class="progress-copy">
                 <span>{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
+                <div class="progress-copy-value">
+                  <strong>{{ item.value }}</strong>
+                  <em>{{ item.ratio }}%</em>
+                </div>
               </div>
               <div class="progress-bar">
-                <span :style="{ width: `${Math.min(item.value, 100)}%` }" />
+                <span :style="{ width: `${item.ratio}%` }" />
               </div>
             </div>
           </div>
@@ -175,7 +254,7 @@ onMounted(async () => {
             <h2>{{ t('dashboard.sections.todo') }}</h2>
           </div>
 
-          <div class="todo-list">
+          <div class="todo-list scroll-list">
             <div v-for="item in todoItems" :key="item.text" class="todo-item">
               <span class="todo-level">{{ item.level }}</span>
               <p>{{ item.text }}</p>
@@ -188,7 +267,7 @@ onMounted(async () => {
             <h2>{{ t('dashboard.sections.logistics') }}</h2>
           </div>
 
-          <div class="logistics-list">
+          <div class="logistics-list scroll-list">
             <div v-for="item in logisticsItems" :key="item.code" class="logistics-item">
               <strong>{{ item.code }}</strong>
               <span>{{ item.status }}</span>
@@ -210,21 +289,6 @@ onMounted(async () => {
           </div>
         </article>
 
-        <article class="dashboard-card wide-card">
-          <div class="card-head">
-            <h2>{{ t('dashboard.sections.catalog') }}</h2>
-          </div>
-
-          <div class="catalog-grid">
-            <div v-for="item in catalogItems" :key="item.title" class="catalog-item">
-              <span class="catalog-mark" />
-              <div>
-                <strong>{{ item.title }}</strong>
-                <p>{{ item.desc }}</p>
-              </div>
-            </div>
-          </div>
-        </article>
       </section>
     </section>
   </main>

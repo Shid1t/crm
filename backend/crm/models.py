@@ -26,11 +26,11 @@ class Customer(TimeStampedModel):
 class Order(TimeStampedModel):
     STATUS_CHOICES = (
         ("pending", "Pending"),
-        ("confirmed", "Confirmed"),
-        ("production", "Production"),
+        ("pending_payment", "Pending Payment"),
+        ("paid", "Paid"),
+        ("pending_shipment", "Pending Shipment"),
         ("shipped", "Shipped"),
         ("completed", "Completed"),
-        ("exception", "Exception"),
     )
 
     order_no = models.CharField(max_length=64, unique=True)
@@ -38,6 +38,7 @@ class Order(TimeStampedModel):
     order_date = models.DateField()
     currency = models.CharField(max_length=10, default="USD")
     amount = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    description = models.TextField(blank=True)
     eta = models.DateField(null=True, blank=True)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="pending")
     is_deleted = models.BooleanField(default=False)
@@ -124,6 +125,7 @@ class MessageThread(TimeStampedModel):
 
 class MessageRecord(TimeStampedModel):
     thread = models.ForeignKey(MessageThread, on_delete=models.CASCADE, related_name="messages")
+    parent = models.ForeignKey("self", on_delete=models.CASCADE, null=True, blank=True, related_name="replies")
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
     sender_role = models.CharField(max_length=20, blank=True)
     content = models.TextField()

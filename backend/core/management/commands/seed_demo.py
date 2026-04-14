@@ -113,8 +113,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("Created customer user"))
 
         base_date = date(2026, 1, 1)
-        statuses = ["pending", "confirmed", "production", "shipped", "completed", "exception"]
-        status_weights = [0.1, 0.15, 0.25, 0.2, 0.2, 0.1]
+        statuses = ["pending", "pending_payment", "paid", "pending_shipment", "shipped", "completed"]
+        status_weights = [0.12, 0.18, 0.2, 0.18, 0.17, 0.15]
 
         for i in range(50):
             days_offset = random.randint(0, 105)
@@ -133,6 +133,13 @@ class Command(BaseCommand):
                     "order_date": order_date,
                     "currency": random.choice(["USD", "PHP", "CNY"]),
                     "amount": f"{random.randint(5000, 150000):.2f}",
+                    "description": random.choice([
+                        "Lithium tool mixed order for Q2 restock.",
+                        "OEM private label set with carton marking update.",
+                        "Urgent replenishment for distributor warehouse.",
+                        "Bundle order with spare battery pack and accessories.",
+                        "Trial order for new compact machinery line.",
+                    ]),
                     "eta": eta,
                     "status": status,
                 },
@@ -203,7 +210,7 @@ class Command(BaseCommand):
                     },
                 )
 
-            if status in ["production", "shipped", "completed"]:
+            if status in ["paid", "pending_shipment", "shipped", "completed"]:
                 prefix = random.choice(TRACKING_PREFIXES)
                 tracking = f"{prefix}{random.randint(2000000, 9999999)}"
                 logi_status = (
